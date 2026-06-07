@@ -2,6 +2,40 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 
+type Engine = 'tripo' | 'stability' | 'fal';
+
+interface EngineInfo {
+  id: Engine;
+  name: string;
+  desc: string;
+  credit: string;
+  endpoint: string;
+}
+
+const ENGINES: EngineInfo[] = [
+  {
+    id: 'tripo',
+    name: 'Tripo3D',
+    desc: 'image → 3D model',
+    credit: '300 קרדיטים/חודש חינם',
+    endpoint: '/api/generate-3d',
+  },
+  {
+    id: 'stability',
+    name: 'Stability AI',
+    desc: 'SF3D — מהיר (0.5 שניה)',
+    credit: 'חינם למשתמשים קטנים',
+    endpoint: '/api/generate-3d-stability',
+  },
+  {
+    id: 'fal',
+    name: 'fal.ai',
+    desc: 'Hyper3D Rodin — איכות גבוהה',
+    credit: '$20 חינם בהרשמה',
+    endpoint: '/api/generate-3d-fal',
+  },
+];
+
 interface ImageUploadProps {
   onImageReady?: (base64: string) => void;
   onModel3D?: (modelUrl: string) => void;
@@ -9,9 +43,10 @@ interface ImageUploadProps {
 
 export default function ImageUpload({ onImageReady, onModel3D }: ImageUploadProps) {
   const [preview, setPreview] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [step, setStep] = useState('');
+  const [selectedEngine, setSelectedEngine] = useState<Engine>('tripo');
   const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -29,96 +64,98 @@ export default function ImageUpload({ onImageReady, onModel3D }: ImageUploadProp
     reader.onload = (event) => {
       const base64 = event.target?.result as string;
       setPreview(base64);
+      setImageBase64(base64);
       onImageReady?.(base64);
-      processImage(base64);
     };
     reader.readAsDataURL(file);
   }, [onImageReady]);
 
-  // File input
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) handleImage(file);
   };
 
-  // Drag & Drop
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(true);
-  };
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-  };
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragOver(true); };
+  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragOver(false); };
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
     setIsDragOver(false);
     const file = e.dataTransfer.files?.[0];
     if (file) handleImage(file);
   };
 
-  // Paste
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.startsWith('image/')) {
         const file = items[i].getAsFile();
-        if (file) {
-          e.preventDefault();
-          handleImage(file);
-          return;
-        }
+        if (file) { e.preventDefault(); handleImage(file); return; }
       }
     }
   }, [handleImage]);
 
-  const processImage = async (imageBase64: string) => {
+  const generateModel = async () => {
+    if (!imageBase64) return;
+    const engine = ENGINES.find(e => e.id === selectedEngine)!;
     setLoading(true);
-    setStep('generating');
     setError('');
+
     try {
-      setStep('generating');
-      const gen3dRes = await fetch('/api/generate-3d', {
+      const response = await fetch(engine.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64 }),
       });
-      const gen3dData = await gen3dRes.json();
-      if (!gen3dRes.ok) throw new Error(gen3dData.error || 'Failed to generate 3D');
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed');
 
-      pollForModel(gen3dData.taskId);
+      // Stability returns instant result with base64 GLB
+      if (data.modelBase64) {
+        const blob = new Blob(
+          [Uint8Array.from(atob(data.modelBase64), c => c.charCodeAt(0))],
+          { type: 'model/gltf-binary' }
+        );
+        const url = URL.createObjectURL(blob);
+        setLoading(false);
+        onModel3D?.(url);
+        return;
+      }
+
+      // Tripo / fal.ai return taskId for polling
+      if (data.taskId) {
+        pollForModel(data.taskId, engine.endpoint);
+        return;
+      }
+
+      // Direct modelUrl
+      if (data.modelUrl) {
+        setLoading(false);
+        onModel3D?.(data.modelUrl);
+        return;
+      }
+
+      throw new Error('Unexpected response');
     } catch (err: any) {
-      setError(err.message || 'שגיאה בעיבוד התמונה');
+      setError(err.message || 'שגיאה');
       setLoading(false);
-      setStep('');
     }
   };
 
-  const pollForModel = async (taskId: string) => {
+  const pollForModel = async (taskId: string, endpoint: string) => {
     let attempts = 0;
     const poll = async () => {
       attempts++;
-      if (attempts > 120) {
-        setError('Timeout');
-        setLoading(false);
-        setStep('');
-        return;
-      }
+      if (attempts > 120) { setError('Timeout'); setLoading(false); return; }
       try {
-        const res = await fetch(`/api/generate-3d?taskId=${taskId}`);
+        const res = await fetch(`${endpoint}?taskId=${taskId}`);
         const data = await res.json();
         if (data.status === 'completed' && data.modelUrl) {
           setLoading(false);
-          setStep('');
           onModel3D?.(data.modelUrl);
         } else if (data.status === 'failed') {
-          setError('יצירת מודל 3D נכשלה');
+          setError(data.error || 'נכשל');
           setLoading(false);
-          setStep('');
         } else {
           setTimeout(poll, 2000);
         }
@@ -130,55 +167,74 @@ export default function ImageUpload({ onImageReady, onModel3D }: ImageUploadProp
   };
 
   return (
-    <div
-      style={{
-        ...s.dropZone,
-        borderColor: isDragOver ? '#111' : '#ccc',
-        backgroundColor: isDragOver ? '#f0f0f0' : '#fafafa',
-      }}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      onPaste={handlePaste}
-      onClick={() => !preview && inputRef.current?.click()}
-      tabIndex={0}
-    >
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleFileChange}
-        disabled={loading}
-        style={{ display: 'none' }}
-      />
+    <div style={s.container}>
+      {/* Drop zone */}
+      <div
+        style={{
+          ...s.dropZone,
+          borderColor: isDragOver ? '#111' : '#ccc',
+          backgroundColor: isDragOver ? '#f0f0f0' : '#fafafa',
+        }}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onPaste={handlePaste}
+        onClick={() => !preview && !loading && inputRef.current?.click()}
+        tabIndex={0}
+      >
+        <input ref={inputRef} type="file" accept="image/*" onChange={handleFileChange} disabled={loading} style={{ display: 'none' }} />
 
-      {!preview && !loading && (
-        <div style={s.placeholder}>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="1.5">
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <circle cx="8.5" cy="8.5" r="1.5" />
-            <path d="M21 15l-5-5L5 21" />
-          </svg>
-          <p style={s.placeholderMain}>גרור תמונה לכאן</p>
-          <p style={s.placeholderSub}>או לחץ לבחור | או הדבק (Ctrl+V)</p>
-        </div>
-      )}
+        {!preview && !loading && (
+          <div style={s.placeholder}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <path d="M21 15l-5-5L5 21" />
+            </svg>
+            <p style={s.placeholderMain}>גרור, הדבק, או לחץ</p>
+          </div>
+        )}
 
-      {preview && (
-        <img
-          src={preview}
-          alt="preview"
-          style={s.previewImg}
-          onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
-        />
-      )}
+        {preview && !loading && (
+          <img src={preview} alt="preview" style={s.previewImg}
+            onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }} />
+        )}
 
-      {loading && (
-        <div style={s.statusOverlay}>
-          <div style={s.spinner} />
-          <p style={s.statusText}>
-            יוצר מודל 3D מהתמונה (1-2 דקות)...
-          </p>
+        {loading && (
+          <div style={s.statusOverlay}>
+            <div style={s.spinner} />
+            <p style={s.statusText}>יוצר מודל 3D...</p>
+          </div>
+        )}
+      </div>
+
+      {/* Engine selector + generate button */}
+      {preview && !loading && (
+        <div style={s.engineSection}>
+          <div style={s.engineButtons}>
+            {ENGINES.map(engine => (
+              <button
+                key={engine.id}
+                onClick={() => setSelectedEngine(engine.id)}
+                style={{
+                  ...s.engineBtn,
+                  backgroundColor: selectedEngine === engine.id ? '#111' : '#fff',
+                  color: selectedEngine === engine.id ? '#fff' : '#111',
+                  borderColor: selectedEngine === engine.id ? '#111' : '#ccc',
+                }}
+              >
+                <span style={s.engineName}>{engine.name}</span>
+                <span style={{
+                  ...s.engineCredit,
+                  color: selectedEngine === engine.id ? '#aaa' : '#999',
+                }}>{engine.credit}</span>
+              </button>
+            ))}
+          </div>
+
+          <button onClick={generateModel} style={s.generateBtn}>
+            יצור מודל 3D
+          </button>
         </div>
       )}
 
@@ -188,9 +244,12 @@ export default function ImageUpload({ onImageReady, onModel3D }: ImageUploadProp
 }
 
 const s: { [key: string]: React.CSSProperties } = {
+  container: {
+    width: '100%',
+  },
   dropZone: {
     width: '100%',
-    minHeight: '280px',
+    minHeight: '220px',
     border: '2px dashed #ccc',
     borderRadius: '6px',
     display: 'flex',
@@ -205,38 +264,33 @@ const s: { [key: string]: React.CSSProperties } = {
   },
   placeholder: {
     textAlign: 'center',
-    padding: '20px',
+    padding: '16px',
   },
   placeholderMain: {
-    fontSize: '16px',
+    fontSize: '15px',
     fontWeight: 600,
-    color: '#888',
-    margin: '12px 0 4px',
-  },
-  placeholderSub: {
-    fontSize: '13px',
-    color: '#bbb',
-    margin: 0,
+    color: '#999',
+    margin: '10px 0 0',
   },
   previewImg: {
     maxWidth: '100%',
-    maxHeight: '100%',
+    maxHeight: '220px',
     objectFit: 'contain',
     cursor: 'pointer',
   },
   statusOverlay: {
     position: 'absolute',
     inset: 0,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: '12px',
+    gap: '10px',
   },
   spinner: {
-    width: '32px',
-    height: '32px',
+    width: '28px',
+    height: '28px',
     border: '3px solid #ddd',
     borderTop: '3px solid #111',
     borderRadius: '50%',
@@ -247,11 +301,51 @@ const s: { [key: string]: React.CSSProperties } = {
     color: '#555',
     margin: 0,
   },
+
+  // Engine section
+  engineSection: {
+    marginTop: '12px',
+  },
+  engineButtons: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '10px',
+  },
+  engineBtn: {
+    flex: 1,
+    padding: '10px 6px',
+    border: '2px solid #ccc',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '4px',
+    transition: 'all 0.15s',
+    fontFamily: 'inherit',
+  },
+  engineName: {
+    fontSize: '13px',
+    fontWeight: 700,
+  },
+  engineCredit: {
+    fontSize: '10px',
+    fontWeight: 400,
+  },
+  generateBtn: {
+    width: '100%',
+    padding: '12px',
+    backgroundColor: '#111',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '15px',
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+
   error: {
-    position: 'absolute',
-    bottom: '8px',
-    left: '8px',
-    right: '8px',
+    marginTop: '8px',
     padding: '8px',
     backgroundColor: '#fff0f0',
     border: '1px solid #c00',
