@@ -92,7 +92,7 @@ Return ONLY a JSON object with no markdown or extra text:
 `;
 
     const message = await anthropic.messages.create({
-      model: "claude-opus-4-1",
+      model: "claude-sonnet-4-20250514",
       max_tokens: 1024,
       system: SYSTEM_PROMPT,
       messages: [
@@ -134,7 +134,7 @@ Return ONLY a JSON object with no markdown or extra text:
         interpretation,
         prompt,
         timestamp: new Date().toISOString(),
-        model: "claude-opus-4-1",
+        model: "claude-sonnet-4-20250514",
       },
     });
   } catch (error: any) {

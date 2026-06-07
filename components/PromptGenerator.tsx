@@ -240,12 +240,22 @@ export default function PromptGenerator() {
               <div style={styles.promptBox}>
                 <p style={styles.promptText}>{prompt.prompt}</p>
               </div>
-              <button
-                onClick={() => copyToClipboard(prompt.prompt)}
-                style={styles.copyBtn}
-              >
-                {copied ? 'Copied!' : 'Copy Prompt'}
-              </button>
+              <div style={styles.promptActions}>
+                <button
+                  onClick={() => copyToClipboard(prompt.prompt)}
+                  style={styles.copyBtn}
+                >
+                  {copied ? 'Copied!' : 'Copy Prompt'}
+                </button>
+                <a
+                  href="https://www.midjourney.com/imagine"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={styles.mjLink}
+                >
+                  Midjourney &rarr;
+                </a>
+              </div>
             </div>
           )}
         </div>
@@ -506,8 +516,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     direction: 'ltr' as const,
     textAlign: 'left' as const,
   },
+  promptActions: {
+    display: 'flex',
+    gap: '8px',
+  },
   copyBtn: {
-    width: '100%',
+    flex: 1,
     padding: '10px',
     backgroundColor: '#fff',
     border: '1px solid #111',
@@ -516,6 +530,22 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     cursor: 'pointer',
     transition: 'background-color 0.15s',
+  },
+  mjLink: {
+    flex: 1,
+    padding: '10px',
+    backgroundColor: '#111',
+    color: '#fff',
+    border: '1px solid #111',
+    borderRadius: '4px',
+    fontSize: '14px',
+    fontWeight: 600,
+    textAlign: 'center' as const,
+    textDecoration: 'none',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Image column (left in RTL)
