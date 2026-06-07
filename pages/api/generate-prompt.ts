@@ -20,8 +20,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { Anthropic } from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic({
-  apiKey: process.env.CLAUDE_API_KEY,
+  apiKey: process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY,
 });
+
+console.log('API key present:', !!(process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY));
 
 const SYSTEM_PROMPT = `You are an artist-architect translating deep ideas into visual prompts.
 
@@ -138,10 +140,10 @@ Return ONLY a JSON object with no markdown or extra text:
       },
     });
   } catch (error: any) {
-    console.error("API Error:", error);
+    console.error("API Error:", error?.status, error?.message, error?.error);
     return res.status(500).json({
       success: false,
-      error: error.message || "Failed to generate prompt",
+      error: `${error?.status || ''} ${error?.message || 'Failed to generate prompt'}`.trim(),
     });
   }
 }
