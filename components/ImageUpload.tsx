@@ -78,22 +78,14 @@ export default function ImageUpload({ onImageReady, onModel3D }: ImageUploadProp
 
   const processImage = async (imageBase64: string) => {
     setLoading(true);
-    setStep('analyzing');
+    setStep('generating');
     setError('');
     try {
-      const visionRes = await fetch('/api/vision', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64 }),
-      });
-      const visionData = await visionRes.json();
-      if (!visionRes.ok) throw new Error(visionData.error || 'Failed to analyze image');
-
       setStep('generating');
       const gen3dRes = await fetch('/api/generate-3d', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: visionData.prompt }),
+        body: JSON.stringify({ imageBase64 }),
       });
       const gen3dData = await gen3dRes.json();
       if (!gen3dRes.ok) throw new Error(gen3dData.error || 'Failed to generate 3D');
@@ -185,7 +177,7 @@ export default function ImageUpload({ onImageReady, onModel3D }: ImageUploadProp
         <div style={s.statusOverlay}>
           <div style={s.spinner} />
           <p style={s.statusText}>
-            {step === 'analyzing' ? 'מנתח תמונה...' : 'יוצר מודל 3D...'}
+            יוצר מודל 3D מהתמונה (1-2 דקות)...
           </p>
         </div>
       )}
