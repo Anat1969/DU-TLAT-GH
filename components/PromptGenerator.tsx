@@ -1,8 +1,9 @@
 /**
  * components/PromptGenerator.tsx
  *
- * ממשק לקלט קונספט ויצירת Midjourney Prompt
- * RTL, שחור-לבן, minimal
+ * Layout: RTL, compact, two-column
+ * Right: form (essential fields highlighted, operative fields grouped)
+ * Left: image frame + output
  */
 
 'use client';
@@ -54,6 +55,7 @@ export default function PromptGenerator() {
   const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('conceptInput', JSON.stringify(concept));
@@ -63,22 +65,16 @@ export default function PromptGenerator() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
     field: keyof ConceptInput
   ) => {
-    setConcept((prev) => ({
-      ...prev,
-      [field]: e.target.value,
-    }));
+    setConcept((prev) => ({ ...prev, [field]: e.target.value }));
   };
 
   const handleGenerate = async () => {
     setError('');
     setLoading(true);
-
     try {
       const response = await fetch('/api/generate-prompt', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: concept.title,
           description: concept.description,
@@ -86,19 +82,11 @@ export default function PromptGenerator() {
           tension: concept.tension,
           medium: concept.medium,
           style: concept.style,
-          references: concept.references
-            .split(',')
-            .map((r) => r.trim())
-            .filter((r) => r),
+          references: concept.references.split(',').map((r) => r.trim()).filter((r) => r),
         }),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate prompt');
-      }
-
+      if (!response.ok) throw new Error('Failed to generate prompt');
       const data = await response.json();
-
       if (data.success) {
         setPrompt({
           interpretation: data.data.interpretation,
@@ -117,379 +105,446 @@ export default function PromptGenerator() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert('Prompt copied to clipboard');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
+  const canGenerate = concept.title && concept.description && concept.essence && concept.tension && concept.medium && concept.style;
+
   return (
-    <div dir="rtl" style={styles.container}>
-      {/* Header */}
-      <div style={styles.header}>
-        <h1 style={styles.title}>יוצר פרומפטים</h1>
-        <p style={styles.subtitle}>
-          זקק את הרעיון לפרומפט Midjourney מזוקק
+    <div dir="rtl" style={styles.page}>
+      {/* ===== HEADER ===== */}
+      <header style={styles.header}>
+        <h1 style={styles.logo}>DU-TLAT</h1>
+        <p style={styles.tagline}>
+          מרעיון לפרומפט. מתמונה למודל תלת-מימדי.
+          <br />
+          <span style={styles.taglineSub}>זקק את הקונספט שלך לשפה ויזואלית מדויקת</span>
         </p>
-      </div>
+      </header>
 
-      <div style={styles.mainGrid}>
-        {/* Input Section */}
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>קלט קונספט</h2>
+      {/* ===== MAIN LAYOUT: form right, image left ===== */}
+      <div style={styles.mainLayout}>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>שם הרעיון</label>
-            <input
-              type="text"
-              placeholder="e.g., התגעגעות למעצור שלא קיים"
-              value={concept.title}
-              onChange={(e) => handleInputChange(e, 'title')}
-              style={styles.input}
-            />
+        {/* ===== RIGHT COLUMN: FORM ===== */}
+        <div style={styles.formColumn}>
+
+          {/* Essential fields - highlighted */}
+          <div style={styles.essentialBlock}>
+            <div style={styles.blockLabel}>עיקרי</div>
+
+            <div style={styles.fieldCompact}>
+              <label style={styles.labelEssential}>שם הרעיון</label>
+              <input
+                type="text"
+                placeholder="התגעגעות למעצור שלא קיים"
+                value={concept.title}
+                onChange={(e) => handleInputChange(e, 'title')}
+                style={styles.inputEssential}
+              />
+            </div>
+
+            <div style={styles.fieldCompact}>
+              <label style={styles.labelEssential}>הגרעין</label>
+              <input
+                type="text"
+                placeholder="משפט אחד שתופס את הרעיון"
+                value={concept.essence}
+                onChange={(e) => handleInputChange(e, 'essence')}
+                style={styles.inputEssential}
+              />
+            </div>
+
+            <div style={styles.fieldCompact}>
+              <label style={styles.labelEssential}>הניגוד / המתח</label>
+              <input
+                type="text"
+                placeholder="אור ↔ צל, סדר ↔ כאוס"
+                value={concept.tension}
+                onChange={(e) => handleInputChange(e, 'tension')}
+                style={styles.inputEssential}
+              />
+            </div>
           </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>תיאור מקור ההשראה</label>
-            <textarea
-              placeholder="מאיפה הרעיון בא? (מתמטיקה, ביומימטיקה, תרבות, וכו')"
-              value={concept.description}
-              onChange={(e) => handleInputChange(e, 'description')}
-              style={{ ...styles.textarea, minHeight: '80px' }}
-            />
-          </div>
+          {/* Operative fields - subtle */}
+          <div style={styles.operativeBlock}>
+            <div style={styles.blockLabelOp}>אופרטיבי</div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>הגרעין בעברית</label>
-            <input
-              type="text"
-              placeholder="משפט אחד שתופס את הרעיון"
-              value={concept.essence}
-              onChange={(e) => handleInputChange(e, 'essence')}
-              style={styles.input}
-            />
-          </div>
+            <div style={styles.fieldCompact}>
+              <label style={styles.labelOp}>מקור השראה</label>
+              <textarea
+                placeholder="מתמטיקה, ביומימטיקה, תרבות..."
+                value={concept.description}
+                onChange={(e) => handleInputChange(e, 'description')}
+                style={styles.textareaOp}
+                rows={2}
+              />
+            </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>הניגוד / המתח</label>
-            <input
-              type="text"
-              placeholder="e.g., אור ↔ צל, סדר ↔ כאוס"
-              value={concept.tension}
-              onChange={(e) => handleInputChange(e, 'tension')}
-              style={styles.input}
-            />
-          </div>
+            <div style={styles.twoCol}>
+              <div style={styles.fieldCompact}>
+                <label style={styles.labelOp}>מדיום</label>
+                <input
+                  type="text"
+                  placeholder="מרחב, מבנה, פרטים"
+                  value={concept.medium}
+                  onChange={(e) => handleInputChange(e, 'medium')}
+                  style={styles.inputOp}
+                />
+              </div>
+              <div style={styles.fieldCompact}>
+                <label style={styles.labelOp}>סגנון</label>
+                <input
+                  type="text"
+                  placeholder="minimalist, organic"
+                  value={concept.style}
+                  onChange={(e) => handleInputChange(e, 'style')}
+                  style={styles.inputOp}
+                />
+              </div>
+            </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>המדיום</label>
-            <input
-              type="text"
-              placeholder="מרחב מחייה, מבנה, פרטים, וכו'"
-              value={concept.medium}
-              onChange={(e) => handleInputChange(e, 'medium')}
-              style={styles.input}
-            />
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>הסגנון</label>
-            <input
-              type="text"
-              placeholder="minimalist, brutalist, organic, parametric"
-              value={concept.style}
-              onChange={(e) => handleInputChange(e, 'style')}
-              style={styles.input}
-            />
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>אינספירציות (optional)</label>
-            <textarea
-              placeholder="בקט, אור זהוב, בטון בשחיקה (מופרדות בפסיק)"
-              value={concept.references}
-              onChange={(e) => handleInputChange(e, 'references')}
-              style={{ ...styles.textarea, minHeight: '60px' }}
-            />
+            <div style={styles.fieldCompact}>
+              <label style={styles.labelOp}>אינספירציות (אופציונלי)</label>
+              <input
+                type="text"
+                placeholder="בקט, אור זהוב, בטון בשחיקה"
+                value={concept.references}
+                onChange={(e) => handleInputChange(e, 'references')}
+                style={styles.inputOp}
+              />
+            </div>
           </div>
 
           <button
             onClick={handleGenerate}
-            disabled={
-              loading ||
-              !concept.title ||
-              !concept.description ||
-              !concept.essence ||
-              !concept.tension ||
-              !concept.medium ||
-              !concept.style
-            }
+            disabled={loading || !canGenerate}
             style={{
-              ...styles.button,
-              opacity:
-                loading ||
-                !concept.title ||
-                !concept.description ||
-                !concept.essence
-                  ? 0.5
-                  : 1,
+              ...styles.generateBtn,
+              opacity: loading || !canGenerate ? 0.4 : 1,
             }}
           >
-            {loading ? 'יוצר פרומפט...' : 'יצור Midjourney Prompt'}
+            {loading ? '... יוצר פרומפט' : 'יצור Prompt'}
           </button>
 
           {error && <div style={styles.error}>{error}</div>}
-        </div>
 
-        {/* Output Section */}
-        {prompt && (
-          <div style={styles.section}>
-            <h2 style={styles.sectionTitle}>Visual Prompt</h2>
-
-            <div style={styles.outputBox}>
-              <h3 style={styles.outputSubtitle}>פרשנות</h3>
-              <p style={styles.outputText}>{prompt.interpretation}</p>
-            </div>
-
-            <div style={styles.outputBox}>
-              <div style={styles.promptDisplay}>
+          {/* Output below form */}
+          {prompt && (
+            <div style={styles.outputSection}>
+              <p style={styles.interpretation}>{prompt.interpretation}</p>
+              <div style={styles.promptBox}>
                 <p style={styles.promptText}>{prompt.prompt}</p>
               </div>
               <button
                 onClick={() => copyToClipboard(prompt.prompt)}
-                style={styles.copyButton}
+                style={styles.copyBtn}
               >
-                Copy
+                {copied ? 'Copied!' : 'Copy Prompt'}
               </button>
             </div>
+          )}
+        </div>
 
-            <div style={styles.meta}>
-              <small>יצור: {new Date(prompt.timestamp).toLocaleString('he-IL')}</small>
-            </div>
+        {/* ===== LEFT COLUMN: IMAGE FRAME ===== */}
+        <div style={styles.imageColumn}>
+          <div style={styles.imageFrame}>
+            {!prompt && !modelUrl && (
+              <div style={styles.imagePlaceholder}>
+                <div style={styles.placeholderIcon}>
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <path d="M21 15l-5-5L5 21" />
+                  </svg>
+                </div>
+                <p style={styles.placeholderText}>
+                  כאן תופיע התמונה שלך
+                </p>
+                <p style={styles.placeholderSub}>
+                  צור Prompt &rarr; צור תמונה ב-Midjourney &rarr; העלה כאן
+                </p>
+              </div>
+            )}
 
-            <ImageUpload onModel3D={setModelUrl} />
+            {prompt && (
+              <ImageUpload onModel3D={setModelUrl} />
+            )}
+
             {modelUrl && <Model3DViewer modelUrl={modelUrl} />}
           </div>
-        )}
-      </div>
-
-      {/* Instructions */}
-      <div style={styles.instructions}>
-        <h3 style={styles.instructionsTitle}>הוראות:</h3>
-        <ol style={styles.instructionsList}>
-          <li>מלא את הקונספט בשדות מעל</li>
-          <li>לחץ על "יצור Prompt" וחכה</li>
-          <li>העתק את ה-Prompt לMidjourney וצור תמונה</li>
-          <li>העלה את התמונה לאפליקציה</li>
-          <li>Tripo3D תהפוך אותה ל-3D</li>
-          <li>הכל יישמר בSupabase</li>
-        </ol>
+        </div>
       </div>
     </div>
   );
 }
 
-// ★ STYLES (RTL, שחור-לבן, minimal)
+// ===== STYLES =====
 
 const styles: { [key: string]: React.CSSProperties } = {
-  container: {
+  page: {
     width: '100%',
-    maxWidth: '1400px',
+    maxWidth: '100%',
     margin: '0 auto',
-    padding: '40px 20px',
-    backgroundColor: '#ffffff',
-    fontFamily: '"Shirahand", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    color: '#000000',
-    lineHeight: 1.6,
+    padding: '24px 40px',
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    color: '#111',
+    lineHeight: 1.5,
+    minHeight: '100vh',
   },
 
+  // Header
   header: {
     textAlign: 'right',
-    marginBottom: '60px',
-    borderBottom: '1px solid #000000',
-    paddingBottom: '30px',
+    marginBottom: '28px',
+    paddingBottom: '20px',
+    borderBottom: '2px solid #111',
   },
-
-  title: {
-    fontSize: '32px',
-    fontWeight: 'normal',
-    margin: '0 0 10px 0',
-    letterSpacing: '-0.5px',
+  logo: {
+    fontSize: '42px',
+    fontWeight: 700,
+    margin: '0 0 6px 0',
+    letterSpacing: '-1px',
   },
-
-  subtitle: {
-    fontSize: '14px',
-    color: '#666666',
+  tagline: {
+    fontSize: '17px',
+    color: '#444',
     margin: 0,
-    fontWeight: 'normal',
+    lineHeight: 1.6,
+  },
+  taglineSub: {
+    fontSize: '14px',
+    color: '#888',
   },
 
-  mainGrid: {
+  // Main layout
+  mainLayout: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
-    gap: '60px',
-    marginBottom: '80px',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '40px',
+    alignItems: 'start',
   },
 
-  section: {
-    padding: '0',
+  // Form column (right in RTL)
+  formColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0',
   },
 
-  sectionTitle: {
-    fontSize: '18px',
-    fontWeight: 'normal',
-    marginBottom: '30px',
-    borderBottom: '1px solid #000000',
-    paddingBottom: '15px',
+  // Essential block
+  essentialBlock: {
+    position: 'relative' as const,
+    border: '2px solid #111',
+    borderRadius: '8px',
+    padding: '20px 18px 14px',
+    marginBottom: '16px',
+    backgroundColor: '#fafafa',
+  },
+  blockLabel: {
+    position: 'absolute' as const,
+    top: '-11px',
+    right: '16px',
+    backgroundColor: '#fafafa',
+    padding: '0 8px',
+    fontSize: '13px',
+    fontWeight: 700,
+    color: '#111',
+    letterSpacing: '1px',
+  },
+
+  // Operative block
+  operativeBlock: {
+    position: 'relative' as const,
+    border: '1px solid #ddd',
+    borderRadius: '8px',
+    padding: '20px 18px 14px',
+    marginBottom: '16px',
+    backgroundColor: '#fff',
+  },
+  blockLabelOp: {
+    position: 'absolute' as const,
+    top: '-11px',
+    right: '16px',
+    backgroundColor: '#fff',
+    padding: '0 8px',
+    fontSize: '12px',
+    fontWeight: 400,
+    color: '#999',
     letterSpacing: '0.5px',
   },
 
-  formGroup: {
-    marginBottom: '35px',
-    display: 'flex',
-    flexDirection: 'column-reverse',
+  // Fields
+  fieldCompact: {
+    marginBottom: '14px',
+  },
+  twoCol: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
     gap: '12px',
   },
 
-  label: {
-    fontSize: '12px',
-    fontWeight: 'normal',
-    marginBottom: '8px',
-    letterSpacing: '0.5px',
-    textTransform: 'uppercase',
-  },
-
-  input: {
-    padding: '12px 0',
-    border: 'none',
-    borderBottom: '1px solid #000000',
+  // Essential labels/inputs
+  labelEssential: {
+    display: 'block',
     fontSize: '14px',
-    backgroundColor: 'transparent',
-    color: '#000000',
-    fontFamily: 'inherit',
-    outline: 'none',
-    transition: 'border-color 0.2s',
+    fontWeight: 600,
+    marginBottom: '4px',
+    color: '#111',
   },
-
-  textarea: {
-    padding: '12px 0',
-    border: 'none',
-    borderBottom: '1px solid #000000',
-    fontSize: '14px',
-    backgroundColor: 'transparent',
-    color: '#000000',
-    fontFamily: 'inherit',
-    outline: 'none',
-    resize: 'vertical',
-    transition: 'border-color 0.2s',
-  },
-
-  button: {
+  inputEssential: {
     width: '100%',
-    padding: '16px',
-    backgroundColor: '#000000',
-    color: '#ffffff',
+    padding: '10px 12px',
+    border: '2px solid #111',
+    borderRadius: '4px',
+    fontSize: '16px',
+    fontFamily: 'inherit',
+    backgroundColor: '#fff',
+    color: '#111',
+    outline: 'none',
+    boxSizing: 'border-box' as const,
+  },
+
+  // Operative labels/inputs
+  labelOp: {
+    display: 'block',
+    fontSize: '13px',
+    fontWeight: 400,
+    marginBottom: '4px',
+    color: '#777',
+  },
+  inputOp: {
+    width: '100%',
+    padding: '8px 10px',
+    border: '1px solid #ccc',
+    borderRadius: '4px',
+    fontSize: '15px',
+    fontFamily: 'inherit',
+    backgroundColor: '#fff',
+    color: '#333',
+    outline: 'none',
+    boxSizing: 'border-box' as const,
+  },
+  textareaOp: {
+    width: '100%',
+    padding: '8px 10px',
+    border: '1px solid #ccc',
+    borderRadius: '4px',
+    fontSize: '15px',
+    fontFamily: 'inherit',
+    backgroundColor: '#fff',
+    color: '#333',
+    outline: 'none',
+    resize: 'vertical' as const,
+    boxSizing: 'border-box' as const,
+  },
+
+  // Generate button
+  generateBtn: {
+    width: '100%',
+    padding: '14px',
+    backgroundColor: '#111',
+    color: '#fff',
     border: 'none',
-    fontSize: '14px',
-    fontWeight: 'normal',
-    letterSpacing: '0.5px',
+    borderRadius: '6px',
+    fontSize: '17px',
+    fontWeight: 600,
     cursor: 'pointer',
-    marginTop: '20px',
     transition: 'opacity 0.2s',
+    marginBottom: '12px',
   },
 
   error: {
-    marginTop: '15px',
-    padding: '12px',
-    backgroundColor: '#f5f5f5',
-    border: '1px solid #000000',
-    fontSize: '13px',
-    color: '#000000',
-    textAlign: 'right',
-  },
-
-  outputBox: {
-    marginBottom: '30px',
-    paddingBottom: '25px',
-    borderBottom: '1px solid #cccccc',
-  },
-
-  outputSubtitle: {
-    fontSize: '13px',
-    fontWeight: 'normal',
-    marginBottom: '10px',
-    letterSpacing: '0.5px',
-    textTransform: 'uppercase',
-  },
-
-  outputText: {
+    padding: '10px',
+    backgroundColor: '#fff0f0',
+    border: '1px solid #c00',
+    borderRadius: '4px',
     fontSize: '14px',
-    lineHeight: 1.8,
-    margin: 0,
-    color: '#333333',
+    color: '#c00',
+    textAlign: 'right' as const,
+    marginBottom: '12px',
   },
 
-  promptDisplay: {
-    backgroundColor: '#f9f9f9',
-    padding: '16px',
-    border: '1px solid #cccccc',
-    marginBottom: '12px',
-    minHeight: '80px',
-    maxHeight: '200px',
+  // Output
+  outputSection: {
+    borderTop: '1px solid #ddd',
+    paddingTop: '14px',
+    marginTop: '4px',
+  },
+  interpretation: {
+    fontSize: '15px',
+    color: '#555',
+    lineHeight: 1.7,
+    margin: '0 0 10px 0',
+  },
+  promptBox: {
+    backgroundColor: '#f5f5f0',
+    border: '1px solid #ddd',
+    borderRadius: '4px',
+    padding: '14px',
+    marginBottom: '8px',
+    maxHeight: '160px',
     overflow: 'auto',
   },
-
   promptText: {
-    fontSize: '14px',
-    lineHeight: 1.8,
+    fontSize: '15px',
+    lineHeight: 1.7,
     margin: 0,
-    color: '#000000',
+    color: '#111',
     fontFamily: '"Courier New", monospace',
+    direction: 'ltr' as const,
+    textAlign: 'left' as const,
   },
-
-  copyButton: {
+  copyBtn: {
     width: '100%',
     padding: '10px',
-    backgroundColor: '#f5f5f5',
-    border: '1px solid #000000',
-    fontSize: '12px',
-    cursor: 'pointer',
-    transition: 'background-color 0.2s',
-  },
-
-  meta: {
-    marginTop: '15px',
-    fontSize: '12px',
-    color: '#999999',
-    textAlign: 'right',
-  },
-
-  instructions: {
-    backgroundColor: '#f9f9f9',
-    padding: '30px',
-    border: '1px solid #cccccc',
-    textAlign: 'right',
-  },
-
-  instructionsTitle: {
+    backgroundColor: '#fff',
+    border: '1px solid #111',
+    borderRadius: '4px',
     fontSize: '14px',
-    fontWeight: 'normal',
-    marginBottom: '15px',
-    letterSpacing: '0.5px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'background-color 0.15s',
   },
 
-  instructionsList: {
-    fontSize: '13px',
-    lineHeight: 2,
+  // Image column (left in RTL)
+  imageColumn: {
+    position: 'sticky' as const,
+    top: '24px',
+  },
+  imageFrame: {
+    width: '100%',
+    minHeight: '500px',
+    border: '2px solid #111',
+    borderRadius: '8px',
+    backgroundColor: '#fafafa',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  imagePlaceholder: {
+    textAlign: 'center' as const,
+    padding: '40px 30px',
+  },
+  placeholderIcon: {
+    marginBottom: '16px',
+    opacity: 0.4,
+  },
+  placeholderText: {
+    fontSize: '18px',
+    fontWeight: 600,
+    color: '#aaa',
+    margin: '0 0 8px 0',
+  },
+  placeholderSub: {
+    fontSize: '14px',
+    color: '#bbb',
     margin: 0,
-    paddingRight: '20px',
-    color: '#333333',
-  },
-
-  model3dPlaceholder: {
-    padding: '20px',
-    backgroundColor: '#f9f9f9',
-    border: '1px solid #cccccc',
-    marginTop: '20px',
-    textAlign: 'center',
-    fontSize: '13px',
-    color: '#666666',
+    direction: 'rtl' as const,
   },
 };
