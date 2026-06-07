@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(Get-ChildItem -Recurse -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object -First 30)",
+      "Bash(xargs grep -l \"generate-3d\\\\|Model3D\\\\|three\\\\.js\\\\|babylon\\\\|tripo\")",
+      "Bash(Get-Content \"C:\\\\Users\\\\shtan\\\\Desktop\\\\ענת - לפטופ\\\\AI\\\\DU-TLAT\\\\components\\\\ImageUpload.tsx\" -Encoding UTF8)",
+      "Bash(Select-Object -Skip 17 -First 5)",
+      "Bash(ls -la \"C:\\\\\\\\Users\\\\\\\\shtan\\\\\\\\Desktop\\\\\\\\ענת - לפטופ\\\\\\\\AI\\\\\\\\DU-TLAT\\\\\\\\pages\\\\\\\\\")",
+      "Bash(test -f \"C:\\\\\\\\Users\\\\\\\\shtan\\\\\\\\Desktop\\\\\\\\ענת - לפטופ\\\\\\\\AI\\\\\\\\DU-TLAT\\\\\\\\components\\\\\\\\Model3DViewer.tsx\")"
+    ]
+  }
+}
