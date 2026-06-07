@@ -13,6 +13,7 @@ import dynamic from 'next/dynamic';
 
 const ImageUpload = dynamic(() => import('./ImageUpload'), { ssr: false });
 const Model3DViewer = dynamic(() => import('./Model3DViewer'), { ssr: false });
+const DepthViewer = dynamic(() => import('./DepthViewer'), { ssr: false });
 
 interface ConceptInput {
   title: string;
@@ -53,6 +54,8 @@ export default function PromptGenerator() {
 
   const [prompt, setPrompt] = useState<GeneratedPrompt | null>(null);
   const [modelUrl, setModelUrl] = useState<string | null>(null);
+  const [depthImage, setDepthImage] = useState<string | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
@@ -252,7 +255,11 @@ export default function PromptGenerator() {
           {/* Frame 1: Image */}
           <div style={styles.framedBox}>
             <div style={styles.frameTitle}>תמונת המחשה</div>
-            <ImageUpload onModel3D={setModelUrl} />
+            <ImageUpload
+              onModel3D={setModelUrl}
+              onImageReady={setUploadedImage}
+              onDepth3D={(img) => { setDepthImage(img); setModelUrl(null); }}
+            />
           </div>
 
           {/* Frame 2: 3D Model */}
@@ -260,6 +267,8 @@ export default function PromptGenerator() {
             <div style={styles.frameTitle}>מודל תלת-מימדי</div>
             {modelUrl ? (
               <Model3DViewer modelUrl={modelUrl} />
+            ) : depthImage && uploadedImage ? (
+              <DepthViewer imageBase64={uploadedImage} depthBase64={depthImage} />
             ) : (
               <div style={styles.model3dEmpty}>
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5">

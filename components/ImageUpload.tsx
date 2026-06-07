@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 
-type Engine = 'tripo' | 'stability' | 'fal';
+type Engine = 'tripo' | 'stability' | 'fal' | 'depth';
 
 interface EngineInfo {
   id: Engine;
@@ -34,14 +34,22 @@ const ENGINES: EngineInfo[] = [
     credit: '$20 חינם בהרשמה',
     endpoint: '/api/generate-3d-fal',
   },
+  {
+    id: 'depth',
+    name: 'מפת עומק',
+    desc: 'depth map 3D — מיידי',
+    credit: 'חינם, בלי API key',
+    endpoint: '',
+  },
 ];
 
 interface ImageUploadProps {
   onImageReady?: (base64: string) => void;
   onModel3D?: (modelUrl: string) => void;
+  onDepth3D?: (imageBase64: string) => void;
 }
 
-export default function ImageUpload({ onImageReady, onModel3D }: ImageUploadProps) {
+export default function ImageUpload({ onImageReady, onModel3D, onDepth3D }: ImageUploadProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -97,6 +105,13 @@ export default function ImageUpload({ onImageReady, onModel3D }: ImageUploadProp
 
   const generateModel = async () => {
     if (!imageBase64) return;
+
+    // Depth map — no API needed, instant client-side
+    if (selectedEngine === 'depth') {
+      onDepth3D?.(imageBase64);
+      return;
+    }
+
     const engine = ENGINES.find(e => e.id === selectedEngine)!;
     setLoading(true);
     setError('');
