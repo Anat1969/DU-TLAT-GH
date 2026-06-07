@@ -3,6 +3,15 @@ import { Anthropic } from '@anthropic-ai/sdk';
 
 const client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
+// Allow large image uploads (up to 10MB)
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 

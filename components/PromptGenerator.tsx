@@ -247,32 +247,31 @@ export default function PromptGenerator() {
           )}
         </div>
 
-        {/* ===== LEFT COLUMN: IMAGE FRAME ===== */}
+        {/* ===== LEFT COLUMN: TWO FRAMES ===== */}
         <div style={styles.imageColumn}>
-          <div style={styles.imageFrame}>
-            {!prompt && !modelUrl && (
-              <div style={styles.imagePlaceholder}>
-                <div style={styles.placeholderIcon}>
-                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1">
-                    <rect x="3" y="3" width="18" height="18" rx="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <path d="M21 15l-5-5L5 21" />
-                  </svg>
-                </div>
-                <p style={styles.placeholderText}>
-                  כאן תופיע התמונה שלך
-                </p>
-                <p style={styles.placeholderSub}>
-                  צור Prompt &rarr; צור תמונה ב-Midjourney &rarr; העלה כאן
+          {/* Frame 1: Image */}
+          <div style={styles.framedBox}>
+            <div style={styles.frameTitle}>תמונת המחשה</div>
+            <ImageUpload onModel3D={setModelUrl} />
+          </div>
+
+          {/* Frame 2: 3D Model */}
+          <div style={styles.framedBox}>
+            <div style={styles.frameTitle}>מודל תלת-מימדי</div>
+            {modelUrl ? (
+              <Model3DViewer modelUrl={modelUrl} />
+            ) : (
+              <div style={styles.model3dEmpty}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                  <path d="M2 17l10 5 10-5" />
+                  <path d="M2 12l10 5 10-5" />
+                </svg>
+                <p style={styles.model3dEmptyText}>
+                  העלה תמונה למעלה ומודל 3D יופיע כאן
                 </p>
               </div>
             )}
-
-            {prompt && (
-              <ImageUpload onModel3D={setModelUrl} />
-            )}
-
-            {modelUrl && <Model3DViewer modelUrl={modelUrl} />}
           </div>
         </div>
       </div>
@@ -514,37 +513,39 @@ const styles: { [key: string]: React.CSSProperties } = {
   imageColumn: {
     position: 'sticky' as const,
     top: '24px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '20px',
   },
-  imageFrame: {
-    width: '100%',
-    minHeight: '500px',
+  framedBox: {
+    position: 'relative' as const,
     border: '2px solid #111',
     borderRadius: '8px',
+    padding: '28px 16px 16px',
     backgroundColor: '#fafafa',
+  },
+  frameTitle: {
+    position: 'absolute' as const,
+    top: '-12px',
+    right: '16px',
+    backgroundColor: '#fafafa',
+    padding: '0 10px',
+    fontSize: '14px',
+    fontWeight: 700,
+    color: '#111',
+  },
+  model3dEmpty: {
     display: 'flex',
     flexDirection: 'column' as const,
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
+    minHeight: '200px',
+    opacity: 0.5,
   },
-  imagePlaceholder: {
-    textAlign: 'center' as const,
-    padding: '40px 30px',
-  },
-  placeholderIcon: {
-    marginBottom: '16px',
-    opacity: 0.4,
-  },
-  placeholderText: {
-    fontSize: '18px',
-    fontWeight: 600,
-    color: '#aaa',
-    margin: '0 0 8px 0',
-  },
-  placeholderSub: {
+  model3dEmptyText: {
     fontSize: '14px',
-    color: '#bbb',
-    margin: 0,
-    direction: 'rtl' as const,
+    color: '#999',
+    margin: '12px 0 0',
+    textAlign: 'center' as const,
   },
 };
