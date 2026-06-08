@@ -32,11 +32,10 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        image_url: dataUrl,
+        input_image_urls: [dataUrl],
         geometry_file_format: 'glb',
         material: 'PBR',
         quality: 'medium',
-        tier: 'Regular',
       }),
     });
 
